@@ -4,27 +4,56 @@ import cv2
 import numpy as np
 import pickle
 from skimage.transform import resize
+import torch 
+import torch.nn as nn
+import torch.nn.functional as F
 
 EMPTY = True
 NOT_EMPTY = False
 
 # MODEL = pickle.load(open("model.p", "rb"))
 
+class ParkingModel(nn.Module):
+    def __init__(self):
+        super(ParkingModel, self).__init__()
+        self.cnn1 = nn.Conv2d(3,16,kernel_size=3,stride=1, padding = 1)
+        self.maxpool1 = nn.MaxPool2d(3, stride=2)
+        self.cnn2 = nn.Conv2d(16,64,kernel_size=2,stride=1, padding = 1)
+        self.maxpool2 = nn.MaxPool2d(2, stride=2)
+        self.linear = nn.Linear(64 * 8 * 17, 128)
+        self.linear2 = nn.Linear(128, 2)
+
+    def forward(self, x):
+        x = self.maxpool1(F.relu(self.cnn1(x)))
+        x = self.maxpool2(F.relu(self.cnn2(x)))
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.linear(x))
+        return self.linear2(x)
+
+
+# Loading the model
+device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+model = ParkingModel().to(device)
+model.load_state_dict(torch.load("parking_model_weights.pth", map_location=device))
+model.eval()
+
+
 # # Utils
-# def empty_or_not(spot_bgr):
+def empty_or_not(spot_bgr):
+    # Preprocess the input image
+    img_resized = resize(spot_bgr, (15, 15, 3))
+    img_tensor = torch.tensor(img_resized, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0).to(device)
 
-#     flat_data = []
+    # Get the model prediction
+    with torch.no_grad():
+        output = model(img_tensor)
+        _, predicted = torch.max(output, 1)
 
-#     img_resized = resize(spot_bgr, (15, 15, 3))
-#     flat_data.append(img_resized.flatten())
-#     flat_data = np.array(flat_data)
-
-#     y_output = MODEL.predict(flat_data)
-
-#     if y_output == 0:
-#         return EMPTY
-#     else:
-#         return NOT_EMPTY
+    # Determine if the spot is empty or not
+    if predicted.item() == 0:
+        return EMPTY
+    else:
+        return NOT_EMPTY
 
 
 def get_parking_spots_bboxes(connected_components):
