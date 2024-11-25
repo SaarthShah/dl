@@ -92,24 +92,27 @@ ret = True
 while ret:
     ret, frame = cap.read()
 
+    empty_count = 0
+
     for spot in spots:
-        x,y,w,h = spot
+        x, y, w, h = spot
 
         spot_roi = frame[y:y+h, x:x+w]
-        is_empty =empty_or_not(spot_roi)
-
-        print(is_empty)
+        is_empty = empty_or_not(spot_roi)
 
         if is_empty:
+            empty_count += 1
             frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
         else:
-            frame =  cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+    total_spots = len(spots)
+    cv2.putText(frame, f"{empty_count}/{total_spots}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
     
     cv2.imshow('frame', frame)
 
     if cv2.waitKey(25) & 0xFF == ord('q'):
         break
-
 
 cap.release()
 cv2.destroyAllWindows()
