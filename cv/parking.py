@@ -41,7 +41,7 @@ model.eval()
 # # Utils
 def empty_or_not(spot_bgr):
     # Preprocess the input image
-    img_resized = resize(spot_bgr, (15, 15, 3))
+    img_resized = resize(spot_bgr, (31, 69, 3))
     img_tensor = torch.tensor(img_resized, dtype=torch.float32).permute(2, 0, 1).unsqueeze(0).to(device)
 
     # Get the model prediction
@@ -95,7 +95,15 @@ while ret:
     for spot in spots:
         x,y,w,h = spot
 
-        frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        spot_roi = frame[y:y+h, x:x+w]
+        is_empty =empty_or_not(spot_roi)
+
+        print(is_empty)
+
+        if is_empty:
+            frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        else:
+            frame =  cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
     
     cv2.imshow('frame', frame)
 
